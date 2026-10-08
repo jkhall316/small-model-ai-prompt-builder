@@ -28,6 +28,7 @@
   .tool.on{background:var(--acc);color:#fff;border-color:var(--acc)}
   button.btn{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 13px;cursor:pointer;font:inherit}
   button.btn:hover{border-color:var(--acc)}
+  button.btn:disabled{opacity:.45;cursor:default;border-color:var(--line)}
   button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
   .sticky{position:sticky;top:12px}
   pre{white-space:pre-wrap;word-wrap:break-word;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:68vh;overflow:auto;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;margin:0}
@@ -691,7 +692,8 @@ $("tidyBtn").onclick = async()=>{
     const keys = Object.keys(tidyPending);
     $("tidyMeta").textContent = `${j.model} · ${(j.ms/1000).toFixed(1)} s · ${keys.length} change${keys.length===1?"":"s"}${j.truncated?" · reply was cut short, check long fields":""}`;
     const list = $("tidyList"); list.textContent = "";
-    if(!keys.length){ const p=document.createElement("p"); p.className="meta"; p.textContent="No changes suggested."; list.appendChild(p); }
+    $("tidyAll").disabled = !keys.length; $("tidyAll").textContent = keys.length ? `Apply all (${keys.length})` : "Nothing to apply";
+    if(!keys.length){ const p=document.createElement("p"); p.className="meta"; p.textContent="No changes suggested — these fields are already clean (the chat tidies as it goes). Type rough notes into the form and try again, or just Copy the prompt."; list.appendChild(p); }
     keys.forEach(k=>{
       const box=document.createElement("div"); box.className="tf"; box.dataset.k=k;
       const b=document.createElement("b"); b.textContent=FIELD_NAMES[k]||k; box.appendChild(b);
