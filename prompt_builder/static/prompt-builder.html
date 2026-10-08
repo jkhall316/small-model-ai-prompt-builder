@@ -706,8 +706,22 @@ $("tidyBtn").onclick = async()=>{
   }catch(e){ $("tidyNote").hidden=false; $("tidyNote").textContent = "Tidy failed: " + e.message; }
   $("tidyBtn").disabled = false; $("tidyBtn").textContent = "✨ Tidy with AI";
 };
-function tidyApply(k){ if(!(k in tidyPending)) return; $(k).value = tidyPending[k]; delete tidyPending[k]; render(); }
-$("tidyAll").onclick = ()=>{ Object.keys(tidyPending).forEach(k=>{ tidyApply(k); const b=document.querySelector(`.tf[data-k="${k}"]`); if(b) b.classList.add("done"); }); };
+function tidyApply(k, quiet){
+  if(!(k in tidyPending)) return false;
+  $(k).value = tidyPending[k]; delete tidyPending[k]; render();
+  if(!quiet) tidyShow([k]);
+  return true;
+}
+function tidyShow(keys){
+  // Make the result visible: the form lives in a collapsed drawer, so open it, jump to the first changed field and flash it.
+  const fw = $("formWrap"); if(fw && !fw.open) fw.open = true;
+  const first = keys.map(k=>$(k)).find(Boolean);
+  if(first){ first.scrollIntoView({behavior:"smooth", block:"center"}); keys.forEach(k=>{ const e=$(k); if(!e) return; e.style.transition="box-shadow .3s"; e.style.boxShadow="0 0 0 3px var(--ok)"; setTimeout(()=>{ e.style.boxShadow=""; }, 1800); }); }
+  const left = Object.keys(tidyPending).length;
+  $("tidyMeta").textContent = `applied ${keys.length} change${keys.length===1?"":"s"} — see the form below${left?` · ${left} still pending`:""}`;
+  if(typeof renderCover==="function") renderCover();
+}
+$("tidyAll").onclick = ()=>{ const keys=Object.keys(tidyPending); keys.forEach(k=>{ tidyApply(k, true); const b=document.querySelector(`.tf[data-k="${k}"]`); if(b) b.classList.add("done"); }); if(keys.length) tidyShow(keys); };
 $("tidyNone").onclick = ()=>{ tidyPending = {}; $("tidyCard").hidden = true; };
 tidyInit();
 
