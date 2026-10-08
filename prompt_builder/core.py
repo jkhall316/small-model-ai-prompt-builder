@@ -97,6 +97,8 @@ TIDY_SYSTEM = (
     "- Fields described as 'one per line' are newline-separated lists, no bullets or numbering.\n"
     "- Make success criteria / expected outcomes testable only where the notes allow; otherwise leave them as stated.\n"
     "- If you have nothing to improve in a field, return it unchanged. Leave empty fields empty unless rule 3 applies.\n"
+    "- If a CONVERSATION TRANSCRIPT is supplied, it is a second source of facts: anything the person said there that belongs in a field "
+    "(a goal, a constraint, a number, a path, a tool, a success criterion) and is missing from the fields must be added. Quote their facts, do not embellish.\n"
     "- No commentary, no markdown fences: output the JSON object only."
 )
 
@@ -161,14 +163,19 @@ def tidy(settings: Settings, body: dict) -> dict:
     spec = TIDY_FIELDS[mode]
     fields = _fields(body)
     payload = {k: {"description": d, "text": str(fields.get(k) or "")} for k, d in spec.items()}
-    if not any(v["text"].strip() for v in payload.values()):
+    raw_chat = body.get("chat")
+    transcript = "\n".join(f"{m['role']}: {m['content'][:1500]}" for m in (raw_chat if isinstance(raw_chat, list) else [])
+                           if isinstance(m, dict) and m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str))[-6000:]
+    if not any(v["text"].strip() for v in payload.values()) and not transcript:
         raise PBError("Nothing to tidy: the fields are empty.", 400)
-    in_chars = sum(len(v["text"]) for v in payload.values())
+    in_chars = sum(len(v["text"]) for v in payload.values()) + len(transcript) // 3
     budget = min(settings.tidy_max_tokens, max(250, int(in_chars / 3 * 1.6) + 40 * len(payload)))
+    user = json.dumps(payload, ensure_ascii=False, indent=1)
+    if transcript:
+        user += "\n\nCONVERSATION TRANSCRIPT (source of facts; 'user' is the person):\n" + transcript
     t0 = time.time()
     try:
-        txt, truncated = complete(settings, [{"role": "system", "content": TIDY_SYSTEM},
-                                             {"role": "user", "content": json.dumps(payload, ensure_ascii=False, indent=1)}],
+        txt, truncated = complete(settings, [{"role": "system", "content": TIDY_SYSTEM}, {"role": "user", "content": user}],
                                   max_tokens=budget, temperature=0.2)
         out = extract_json(txt)
     except ModelError as ex:
@@ -187,7 +194,8 @@ def tidy(settings: Settings, body: dict) -> dict:
         # Tidy may empty a field only when it moved that content elsewhere (i.e. it also filled other fields).
         if new != old and (new or any(isinstance(out.get(j), str) and out.get(j).strip() and not payload[j]["text"].strip() for j in spec)):
             changes[k] = new
-    return dict(changes=changes, model=settings.model, ms=int((time.time() - t0) * 1000), max_tokens=budget, truncated=truncated)
+    return dict(changes=changes, model=settings.model, ms=int((time.time() - t0) * 1000), max_tokens=budget, truncated=truncated,
+                reviewed=len(spec), used_transcript=bool(transcript))
 
 
 def chat(settings: Settings, body: dict) -> dict:
