@@ -1,0 +1,30 @@
+# docker compose up -d   ->  http://localhost:7810
+#
+# Model settings come from a .env file next to this (copy .env.example). Inside the container "127.0.0.1" is the
+# container itself, so point PB_BASE_URL at the host:  http://host.docker.internal:11434/v1  (Docker Desktop and,
+# thanks to extra_hosts below, Linux too) or at a LAN IP.
+#
+# The port is published on 127.0.0.1 only: the API proxies to your model (and may hold its API key). To expose it on
+# the LAN change it to "7810:7810" knowingly; there is no authentication.
+services:
+  prompt-builder:
+    build: .
+    image: small-model-ai-prompt-builder:latest
+    container_name: prompt-builder
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7810:7810"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PB_HOST: 0.0.0.0          # must bind all interfaces inside the container; overrides anything in .env
+      PB_PORT: "7810"
+      PB_ALLOWED_HOSTS: ".*"    # the Host header is the published port's name, not loopback
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:7810/healthz',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

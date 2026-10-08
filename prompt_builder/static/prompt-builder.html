@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="pb-api" content="/api/pb">
+<title>Project Prompt Builder v1.3</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--line:#2a2f3a;--txt:#e6e8ee;--mut:#9aa3b2;--acc:#6ea8fe;--ok:#4cc38a;--warn:#e5a03b}
+  @media (prefers-color-scheme: light){:root{--bg:#f4f5f8;--panel:#fff;--panel2:#f0f2f6;--line:#d9dde6;--txt:#1b1f27;--mut:#5b6575;--acc:#2f6fe0}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  h1{font-size:18px;margin:0}
+  .wrap{display:grid;grid-template-columns:minmax(320px,1fr) minmax(320px,1fr);gap:16px;padding:16px 20px;max-width:1500px;margin:0 auto}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 10px}
+  label{display:block;font-weight:600;margin:10px 0 4px;font-size:14px}
+  .hint{color:var(--mut);font-weight:400;font-size:12.5px}
+  input[type=text],select,textarea{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font:inherit}
+  textarea{min-height:76px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:0}
+  .checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 12px}
+  .checks label{font-weight:400;margin:0;display:flex;gap:7px;align-items:flex-start;font-size:14px}
+  .tools{display:flex;gap:8px;flex-wrap:wrap}
+  .tool{padding:8px 14px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:8px;cursor:pointer;font:inherit}
+  .tool.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  button.btn{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 13px;cursor:pointer;font:inherit}
+  button.btn:hover{border-color:var(--acc)}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+  .sticky{position:sticky;top:12px}
+  pre{white-space:pre-wrap;word-wrap:break-word;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:68vh;overflow:auto;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;margin:0}
+  .bar{height:8px;background:var(--panel2);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+  .bar i{display:block;height:100%;width:0;background:var(--warn);transition:.2s}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .tips{font-size:13px;color:var(--mut);margin:8px 0 0;padding-left:18px}
+  .meta{font-size:12.5px;color:var(--mut)}
+  [hidden]{display:none!important}
+  .key{margin:6px 0 0;font-size:12.5px;color:var(--mut)}
+  .key summary{cursor:pointer;user-select:none}
+  .key dl{margin:6px 0 0;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:7px}
+  .key dt{font-weight:600;color:var(--txt);margin-top:6px}.key dt:first-child{margin-top:0}
+  .key dt.cur{color:var(--acc)}
+  .key dd{margin:1px 0 0}
+  .tf{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;background:var(--panel2)}
+  .tf b{font-size:13px}
+  .tf .old,.tf .new{white-space:pre-wrap;font-size:13px;margin:4px 0;padding:6px 8px;border-radius:6px}
+  .tf .old{color:var(--mut);text-decoration:line-through;background:transparent}
+  .tf .new{background:var(--panel);border:1px solid var(--line)}
+  .tf.done .new{border-color:var(--ok)}
+  .tf.done .row,.tf.skip .row{display:none}
+  .tf.skip{opacity:.5}
+  .chat{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto;padding:2px}
+  .msg{padding:8px 11px;border-radius:10px;max-width:92%;white-space:pre-wrap;font-size:14px;line-height:1.4}
+  .msg.ai{background:var(--panel2);border:1px solid var(--line);align-self:flex-start}
+  .msg.me{background:var(--acc);color:#fff;align-self:flex-end}
+  .msg.sys{color:var(--mut);font-size:12.5px;align-self:center;background:transparent}
+  .cover{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .cover span{font-size:12px;border:1px solid var(--line);border-radius:12px;padding:2px 9px;color:var(--mut)}
+  .cover span.ok{border-color:var(--ok);color:var(--ok)}
+  .formwrap{margin-bottom:14px}
+  .formwrap>summary{cursor:pointer;color:var(--mut);font-size:13px;padding:6px 0;user-select:none}
+  .formwrap[open]>summary{margin-bottom:8px}
+  .hitem{border:1px solid var(--line);border-radius:8px;margin-top:8px;background:var(--panel2)}
+  .hitem summary{cursor:pointer;padding:8px 10px;font-size:13.5px}
+  .hitem pre{max-height:240px;margin:0 10px 8px;font-size:12px}
+  .hitem .row{padding:0 10px 10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Project Prompt Builder <span class="meta" id="ver" title="Version — quote this when reporting a problem">v1.3</span></h1>
+  <div class="row">
+    <select id="saved" style="width:auto"><option value="">Saved projects…</option></select>
+    <button class="btn" id="saveBtn">Save</button>
+    <button class="btn" id="delBtn">Delete</button>
+    <button class="btn" id="newBtn">New</button>
+    <button class="btn" id="expBtn">Export JSON</button>
+    <button class="btn" id="impBtn">Import JSON</button>
+    <input type="file" id="impFile" accept=".json" hidden>
+  </div>
+</header>
+
+<div class="wrap">
+<div>
+  <div class="card">
+    <h2>1. Target tool</h2>
+    <div class="tools" id="tools"></div>
+    <p class="meta" id="toolNote"></p>
+  </div>
+
+  <div class="card">
+    <h2>Prompt type</h2>
+    <div class="tools" id="modes">
+      <button class="tool" data-m="initial">Initial prompt</button>
+      <button class="tool" data-m="followup">Follow-up prompt</button>
+    </div>
+    <p class="meta" id="modeNote"></p>
+  </div>
+
+  <div class="card" id="chatCard" hidden>
+    <h2>Tell me about it <span class="hint" id="chatHint">I'll ask what I need, one thing at a time</span></h2>
+    <div class="chat" id="chatLog"></div>
+    <textarea id="chatIn" placeholder="Describe it any way you like: one line or a brain dump. Ctrl+Enter sends." style="min-height:64px;margin-top:8px"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn pri" id="chatSend">Send</button>
+      <button class="btn" id="chatDone">I'm done — build the prompt</button>
+      <button class="btn" id="chatReset">Start over</button>
+      <span class="meta" id="chatStatus"></span>
+    </div>
+    <div class="cover" id="chatCover"></div>
+  </div>
+
+  <details id="formWrap" class="formwrap"><summary>Form — see or edit any field directly</summary>
+  <div id="fuCards" hidden>
+    <div class="card">
+      <h2>Follow-up</h2>
+      <label>What kind of follow-up?</label>
+      <select id="fuKind">
+        <option value="quick">Quick message (no boilerplate)</option>
+        <option value="next">Next task in this project</option>
+        <option value="fix">Fix / debug a result</option>
+        <option value="review">Review / verify last output</option>
+        <option value="change">Change direction / scope</option>
+        <option value="correct">Correction (it has a fact wrong)</option>
+        <option value="clarify">Clarification (it misread my intent)</option>
+        <option value="redirect">Redirect / stop (do this instead)</option>
+        <option value="resume">Resume after interruption</option>
+      </select>
+      <details class="key"><summary>Key: what each kind generates</summary><dl id="fuKey"></dl></details>
+      <label id="fuTaskL"></label><textarea id="fuTask"></textarea>
+      <div id="fuLastW"><label id="fuLastL"></label><textarea id="fuLast" style="min-height:110px"></textarea></div>
+      <div id="fuExpW"><label id="fuExpL"></label><textarea id="fuExpected" style="min-height:56px"></textarea></div>
+      <div id="fuDoneW"><label id="fuDoneL"></label><textarea id="fuDone" style="min-height:56px"></textarea></div>
+      <label>Guardrails for this turn <span class="hint">one per line: things not to touch, interrupt, or assume right now</span></label>
+      <textarea id="fuGuard" style="min-height:56px" placeholder="Don't interrupt the Hallo 2 render that is running&#10;Don't restart the vLLM service"></textarea>
+      <label>Context to paste <span class="hint">optional: logs, device lists, notes, earlier answers</span></label>
+      <textarea id="fuPaste" style="min-height:90px"></textarea>
+      <div class="checks" style="margin-top:10px"><label><input type="checkbox" id="fuCtx" checked> Include a compact project brief as context</label></div>
+      <p class="meta">The brief comes from the Initial prompt fields. Load a saved project (top right) or switch to Initial prompt to edit them.</p>
+    </div>
+  </div>
+
+  <div id="initCards">
+  <div class="card">
+    <h2>2. What is it?</h2>
+    <label>Project name</label><input type="text" id="name" placeholder="e.g. MyVAClaimGuide">
+    <label>One-sentence summary <span class="hint">what it is, for whom</span></label>
+    <input type="text" id="oneliner" placeholder="A web app that helps veterans understand and prepare VA disability claims">
+    <label>Type of work</label>
+    <select id="type">
+      <option>New project from scratch</option>
+      <option>Add a feature to an existing project</option>
+      <option>Fix a bug / debug</option>
+      <option>Refactor / clean up</option>
+      <option>Deploy / infrastructure / DevOps</option>
+      <option>Research / planning only (no code yet)</option>
+    </select>
+    <details class="key"><summary>Key: what each type of work generates</summary><dl id="typeKey"></dl></details>
+    <label>Problem being solved <span class="hint">why this needs to exist</span></label>
+    <textarea id="problem"></textarea>
+    <label>Users / audience</label>
+    <textarea id="users" style="min-height:56px"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>3. Goals &amp; outcomes</h2>
+    <label>Goals <span class="hint">one per line</span></label>
+    <textarea id="goals" placeholder="Let users do X&#10;Keep it simple enough to run on a home server"></textarea>
+    <label>Success criteria / expected outcomes <span class="hint">one per line, make them testable</span></label>
+    <textarea id="outcomes" placeholder="User can upload a CSV and see results in under 5 seconds&#10;App starts with one docker compose up"></textarea>
+    <label>Out of scope <span class="hint">one per line, what NOT to build</span></label>
+    <textarea id="outscope" style="min-height:56px"></textarea>
+    <label>Phases / approval gates <span class="hint">one per line, in order; the AI stops for your OK after each</span></label>
+    <textarea id="phases" style="min-height:56px" placeholder="Investigate read-only and report findings&#10;Implement after approval&#10;Verify and summarize with rollback steps"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>4. Deliverables</h2>
+    <div class="checks" id="deliv"></div>
+    <label>Other deliverables <span class="hint">one per line</span></label>
+    <textarea id="delivOther" style="min-height:56px"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>5. Technical context</h2>
+    <label>Tech stack / preferred tools</label><textarea id="stack" style="min-height:56px" placeholder="Python 3.12, Flask, SQLite, Docker"></textarea>
+    <label>Environment <span class="hint">OS, hardware, where it runs</span></label>
+    <textarea id="env" style="min-height:56px" placeholder="Windows 11 + WSL2 + Docker Desktop; deploys to QNAP NAS (Container Station)"></textarea>
+    <label>Constraints <span class="hint">one per line: budget, APIs, performance, security</span></label>
+    <textarea id="constraints" style="min-height:56px"></textarea>
+    <label>Existing context <span class="hint">repo structure, files, errors, links, prior decisions</span></label>
+    <textarea id="context"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>6. How the AI should work</h2>
+    <div class="checks" id="style"></div>
+    <label>Anything else <span class="hint">tone, special rules</span></label>
+    <textarea id="extra" style="min-height:56px"></textarea>
+  </div>
+  </div>
+  </details>
+</div>
+
+<div class="sticky" style="align-self:start">
+  <div class="card">
+    <h2>Generated prompt</h2>
+    <div class="row" style="margin-bottom:8px">
+      <div class="bar" style="flex:1"><i id="barfill"></i></div>
+      <span class="meta" id="score"></span>
+    </div>
+    <pre id="out"></pre>
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" id="copyBtn">Copy prompt</button>
+      <button class="btn" id="dlBtn">Download .md</button>
+      <button class="btn" id="logBtn">Add to history</button>
+      <button class="btn" id="tidyBtn" hidden title="Sends the text fields (not pasted logs) to the configured local model and shows every change for approval">✨ Tidy with AI</button>
+      <span class="meta" id="count"></span>
+    </div>
+    <p class="meta" id="tidyNote" hidden></p>
+    <ul class="tips" id="tips"></ul>
+  </div>
+  <div class="card" id="tidyCard" hidden>
+    <h2>AI suggestions <span class="hint" id="tidyMeta"></span></h2>
+    <p class="meta">Nothing is applied until you say so. Your original text is kept for any field you skip.</p>
+    <div id="tidyList"></div>
+    <div class="row" style="margin-top:10px"><button class="btn pri" id="tidyAll">Apply all</button><button class="btn" id="tidyNone">Dismiss</button></div>
+  </div>
+  <div class="card">
+    <h2>Prompt history <span id="histCount" class="hint"></span></h2>
+    <p class="meta">Prompts you add here are saved with the project (use Save) and included in Export JSON.</p>
+    <div id="hist"></div>
+  </div>
+</div>
+</div>
+
+<script>
+const TOOLS = {
+  claude:{label:"Claude",note:"XML-tagged sections, which Claude follows very reliably. Works in Claude chat, Projects, and Claude Code."},
+  cursor:{label:"Cursor",note:"Markdown with explicit scope and file rules for Cursor's Agent/Composer (any model, including Grok). Save as a chat prompt or adapt into .cursor/rules."},
+  antigravity:{label:"Antigravity",note:"Mission-style brief with plan, artifacts, and verification steps suited to Antigravity's agent manager."},
+  openai:{label:"OpenAI",note:"Role + structured markdown for ChatGPT, Codex, or the API (developer/system + user message)."},
+  gemini:{label:"Gemini",note:"Task-first markdown with an explicit output format, which Gemini follows well. Works in the Gemini app, AI Studio, and Gemini CLI."},
+  grok:{label:"Grok (xAI)",note:"Direct markdown brief with an explicit output contract and checkpoints, suited to Grok 4.7's long-running coding-agent mode. Works on grok.com, in the X app, in Cursor, and the xAI API (system + user message)."}
+};
+const DELIVS = ["Working code (complete files)","Project folder structure","README with setup steps","Dockerfile / docker-compose.yml",".env.example","Database schema / migrations","API documentation","Automated tests","Deployment / run instructions","Architecture overview","Implementation plan / roadmap","Troubleshooting guide","UI mockup / wireframe","Sample data / seed data"];
+const STYLES = ["Ask clarifying questions before writing code","Propose a plan and wait for my approval","Give step-by-step instructions I can follow","Provide complete file contents (no snippets or '...')","Don't assume prior knowledge; explain commands","State which OS/shell/container each command runs in","Build in small, testable milestones","Flag risks, assumptions, and trade-offs","Keep it simple; avoid over-engineering","Include verification steps for every stage"];
+const TEXT_IDS = ["name","oneliner","type","problem","users","goals","outcomes","outscope","phases","delivOther","stack","env","constraints","context","extra","fuKind","fuTask","fuLast","fuExpected","fuDone","fuGuard","fuPaste"];
+const SELECT_IDS = ["type","fuKind"];
+const FU = {
+  quick:{label:"Quick message", intro:"", task:"Message <span class='hint'>exactly what you would type; it is sent with a one-line project header</span>", last:null, exp:null, done:null, steps:"", reqTitle:"Message",
+        gen:"Your message verbatim plus a one-line project header. No instructions, no response contract. For answers and one-liners."},
+  next:{label:"Next task", intro:"Continue the project. Do the next task below, staying inside the original brief and success criteria.",
+        task:"Next task <span class='hint'>what to do now</span>", last:null, exp:"Expected outcome <span class='hint'>how I will check it</span>", done:"Done so far <span class='hint'>features built, decisions made, files changed</span>",
+        steps:"Say briefly how you will approach it, do it, then tell me how to verify it and what the sensible next step is.", reqTitle:"Next Task",
+        gen:"A task brief with the compact project context, your expected outcome, and an approach → do → verify → next-step response contract."},
+  fix:{label:"Fix / debug", intro:"Something did not work as expected. Find the root cause from the evidence below and fix it. Do not guess: say what you checked, change only what the cause requires, and tell me how to confirm the fix.",
+        task:"What I was doing / what is wrong", last:"Error, log or wrong output <span class='hint'>paste it</span>", exp:"What should have happened", done:"Already tried <span class='hint'>so you do not repeat it</span>",
+        steps:"State the most likely root cause and how you confirmed it before changing anything, then give the fix and a way to verify it.", reqTitle:"What Is Wrong", doneKey:"already_tried", doneTitle:"Already Tried",
+        gen:"A root-cause-first debugging brief: the evidence, expected behaviour, what you already tried, and an order to confirm the cause before changing anything."},
+  review:{label:"Review / verify", intro:"Review the work so far against the success criteria. For each criterion say met, partly met or not met, with evidence. Then list gaps, risks and the fixes in priority order. Do not change anything yet.",
+        task:"What to focus on <span class='hint'>or leave general</span>", last:"The last output, or a summary of what was built <span class='hint'>paste it</span>", exp:null, done:"Done so far <span class='hint'>optional</span>",
+        steps:"Finish with a short verdict and the single most important next step.", reqTitle:"Review Focus",
+        gen:"A read-only audit: met / partly met / not met per success criterion with evidence, then gaps and fixes in priority order. Nothing is changed."},
+  change:{label:"Change direction / scope", intro:"The requirements have changed. Before editing anything, list which earlier decisions, files and success criteria this affects. Then apply the change below and update whatever no longer holds.",
+        task:"What changed and why", last:null, exp:"New expected outcome", done:"Done so far <span class='hint'>what may need rework</span>",
+        steps:"Confirm your understanding of the change in one or two sentences, show the impact list, then proceed.", reqTitle:"What Changed",
+        gen:"An impact-first scope change: list the earlier decisions, files and criteria the change affects, then apply it and update whatever no longer holds."},
+  correct:{label:"Correction", intro:"A fact or assumption you are working from is wrong. Treat the statement below as true and the earlier version as wrong. List everything you said or built that depended on the wrong version, then fix only those. Do not redo the rest.",
+        task:"What it got wrong <span class='hint'>quote or paraphrase the wrong belief</span>", last:"What is actually true", exp:null, done:"What depends on it <span class='hint'>optional: files, steps or decisions you know were based on the wrong fact</span>",
+        steps:"Start with a one-line acknowledgement of the corrected fact, then the dependency list, then the fixes.", reqTitle:"What You Got Wrong", lastTitle:"What Is Actually True", lastKey:"actual_fact", doneKey:"known_dependents", doneTitle:"Known Dependents",
+        gen:"A fact correction: the wrong belief, the true version, and an order to find and fix only what depended on the wrong fact, keeping everything else."},
+  clarify:{label:"Clarification", intro:"Your facts are fine but you misread what I wanted. My actual intent is below. Keep whatever still serves it, say explicitly what you are discarding, then continue toward the intent. Do not start over.",
+        task:"What I actually meant", last:"What you did instead <span class='hint'>optional: paste or describe the misread result</span>", exp:"What the result should look like now", done:null,
+        steps:"Reply with: what you keep, what you drop, then the continued work.", reqTitle:"What I Actually Meant", lastTitle:"What You Did Instead", lastKey:"what_you_did",
+        gen:"An intent reset: what you meant versus what it did, with a keep / drop / continue contract so it re-aims instead of restarting."},
+  redirect:{label:"Redirect / stop", intro:"Stop the current approach. If anything half-done needs undoing or could leave things broken, say so and wait before touching it. Then take the new approach below.",
+        task:"What to do instead", last:"What to stop <span class='hint'>the approach or step to abandon</span>", exp:"Expected outcome of the new approach", done:"Must not be undone <span class='hint'>optional: state or files to preserve</span>",
+        steps:"Confirm what you stopped, flag any cleanup needed, then proceed with the new approach.", reqTitle:"Do This Instead", lastTitle:"Stop This", lastKey:"stop", doneKey:"preserve", doneTitle:"Must Not Be Undone",
+        gen:"A stop-and-switch order: what to abandon, what to do instead, and a check for half-finished work that must be undone or preserved first."},
+  resume:{label:"Resume after interruption", intro:"Work was interrupted. Before continuing, state what you believe is done, verify it against the actual files or system (do not trust memory), then pick up from the first unverified step.",
+        task:"Where we were <span class='hint'>the task in progress when it stopped</span>", last:"Last thing I saw <span class='hint'>optional: paste the last output or message</span>", exp:null, done:"Believed done <span class='hint'>what you think finished before the stop</span>",
+        steps:"Reply with: the verified-done list, the first unverified step, then continue from there.", reqTitle:"Where We Were", lastTitle:"Last Output Seen", lastKey:"last_output", doneKey:"believed_done", doneTitle:"Believed Done",
+        gen:"A resume checkpoint: a believed-done list to verify against reality before continuing from the first unverified step, so nothing is redone or skipped."}
+};
+const TYPES = {
+  "New project from scratch":{instr:"This is a new project: propose the folder structure and plan before writing code, and deliver complete files, not snippets.",
+    gen:"Full build brief: plan and folder structure first, then every deliverable as complete files, then a verification checklist against each success criterion."},
+  "Add a feature to an existing project":{instr:"This adds to an existing codebase: read the relevant files first, match existing conventions, make the smallest change that meets the criteria, and do not touch unrelated code.",
+    gen:"Change brief scoped to existing code: read first, match conventions, smallest change that meets the criteria, no unrelated edits."},
+  "Fix a bug / debug":{instr:"This is a bug fix: reproduce it, identify the root cause with evidence before changing anything, change only what the cause requires, and show how the fix is verified.",
+    gen:"Root-cause brief: reproduce, confirm the cause with evidence, fix only that, prove the fix."},
+  "Refactor / clean up":{instr:"This is a refactor: behaviour must not change. Work in small reviewable steps and show, with tests or checks, that each step preserves behaviour.",
+    gen:"Behaviour-preserving refactor brief: no functional change, small reviewable steps, tests or checks prove each step is equivalent."},
+  "Deploy / infrastructure / DevOps":{instr:"This is deployment/infrastructure work: give exact commands and say where each runs, back up before editing anything, include rollback steps, and never run destructive commands without asking.",
+    gen:"Ops brief: exact commands with where each runs, backups before edits, rollback steps, nothing destructive without asking."},
+  "Research / planning only (no code yet)":{instr:"This is research/planning only: do not write code. Present findings, compare the options with trade-offs, recommend one, and list open questions.",
+    gen:"Options brief: findings, compared options with trade-offs, a recommendation and open questions. No code; the completeness score skips code-only fields."}
+};
+let mode = "initial";
+let history = [];
+let chat = [];
+let tool = "claude";
+const $ = id => document.getElementById(id);
+const PB_API = (window.PB_API || (document.querySelector("meta[name=pb-api]")||{}).content || "/api/pb").replace(/\/$/,"");
+
+function mkChecks(containerId, items, group){
+  $(containerId).innerHTML = items.map((t,i)=>`<label><input type="checkbox" data-g="${group}" value="${t.replace(/"/g,'&quot;')}"> ${t}</label>`).join("");
+}
+mkChecks("deliv",DELIVS,"deliv"); mkChecks("style",STYLES,"style");
+$("tools").innerHTML = Object.keys(TOOLS).map(k=>`<button class="tool" data-t="${k}">${TOOLS[k].label}</button>`).join("");
+
+const lines = s => (s||"").split("\n").map(x=>x.replace(/^[-*•\d.\s]+/,"").trim()).filter(Boolean);
+const bullets = a => a.map(x=>`- ${x}`).join("\n");
+const checked = g => [...document.querySelectorAll(`input[data-g="${g}"]:checked`)].map(e=>e.value);
+
+function state(){
+  const s = {tool, mode, history, chat, fuCtx:$("fuCtx").checked, deliv:checked("deliv"), style:checked("style")};
+  TEXT_IDS.forEach(id=>s[id]=$(id).value.trim());
+  return s;
+}
+function setState(s){
+  tool = TOOLS[s.tool] ? s.tool : "claude";
+  mode = s.mode==="followup" ? "followup" : "initial";
+  history = Array.isArray(s.history) ? s.history.filter(h=>h && typeof h.text==="string") : [];
+  chat = Array.isArray(s.chat) ? s.chat.filter(m=>m && (m.role==="user"||m.role==="assistant") && typeof m.content==="string") : [];
+  renderChat();
+  $("fuCtx").checked = s.fuCtx!==false;
+  TEXT_IDS.forEach(id=>{ if(SELECT_IDS.includes(id)){ if(s[id]) $(id).value=s[id]; } else $(id).value = s[id]||""; });
+  document.querySelectorAll("input[data-g]").forEach(e=>{ const list = s[e.dataset.g]||[]; e.checked = list.includes(e.value); });
+  render();
+}
+
+function sections(s){
+  const deliv = [...s.deliv, ...lines(s.delivOther)];
+  const sec = [];
+  const add = (key,title,body)=>{ if(body && body.trim()) sec.push({key,title,body:body.trim()}); };
+  add("project","Project", [s.name && `Name: ${s.name}`, s.oneliner && `Summary: ${s.oneliner}`, s.type && `Type of work: ${s.type}`].filter(Boolean).join("\n"));
+  add("problem","Problem & Audience", [s.problem, s.users && `Users: ${s.users}`].filter(Boolean).join("\n\n"));
+  add("goals","Goals", bullets(lines(s.goals)));
+  add("outcomes","Success Criteria / Expected Outcomes", bullets(lines(s.outcomes)));
+  add("deliverables","Deliverables", bullets(deliv));
+  add("tech","Technical Context", [s.stack && `Stack: ${s.stack}`, s.env && `Environment: ${s.env}`].filter(Boolean).join("\n"));
+  add("constraints","Constraints", bullets(lines(s.constraints)));
+  add("outscope","Out of Scope", bullets(lines(s.outscope)));
+  const ph = lines(s.phases);
+  if(ph.length) add("phases","Phases & Approval Gates", ph.map((p,i)=>`${i+1}. ${p}`).join("\n") + "\n\nWork through these in order. After finishing each phase, report what you did and STOP; do not start the next phase until I say so.");
+  add("context","Existing Context", s.context);
+  add("rules","Working Rules", bullets([...s.style, ...lines(s.extra)]));
+  return sec;
+}
+
+function contextSections(s){
+  const keep = ["goals","outcomes","tech","constraints","outscope","rules"];
+  const proj = [s.name && `Name: ${s.name}`, s.oneliner && `Summary: ${s.oneliner}`].filter(Boolean).join("\n");
+  const out = [];
+  if(proj) out.push({key:"project",title:"Project",body:proj});
+  sections(s).forEach(x=>{ if(keep.includes(x.key)) out.push(x); });
+  return out;
+}
+
+function buildFollow(s){
+  const K = FU[s.fuKind] || FU.next;
+  const strip = h => h ? h.replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim() : "";
+  const ctx = s.fuCtx ? contextSections(s) : [];
+  const parts = [];
+  const add = (key,title,body)=>{ if(body && body.trim()) parts.push({key,title,body:body.trim()}); };
+  if(K.done) add(K.doneKey||"progress", K.doneTitle||"Progress So Far", s.fuDone);
+  add("request", K.reqTitle||"Request", s.fuTask);
+  if(K.last) add(K.lastKey||"evidence", K.lastTitle || strip(K.last.split("<")[0]) || "Evidence", s.fuLast);
+  if(K.exp) add("expected", strip(K.exp.split("<")[0]), s.fuExpected);
+  const guard = lines(s.fuGuard);
+  if(guard.length) add("guardrails","Guardrails For This Turn", bullets(guard) + "\n\nThese apply to this turn on top of the working rules. If any step would break one, stop and tell me instead.");
+  add("pasted_context","Pasted Context", s.fuPaste);
+
+  if(s.fuKind==="quick"){
+    const head = [s.name, s.oneliner].filter(Boolean).join(" — ");
+    let o = "";
+    if(s.fuCtx && head) o += (tool==="claude" ? `<project>${head}</project>\n\n` : `Project: ${head}\n\n`);
+    o += s.fuTask || "";
+    if(guard.length) o += `\n\n${tool==="claude" ? "<guardrails>\n" : "Guardrails for this turn:\n"}${bullets(guard)}${tool==="claude" ? "\n</guardrails>" : ""}`;
+    if(s.fuPaste) o += `\n\n${tool==="claude" ? "<pasted_context>\n" : "Context:\n"}${s.fuPaste}${tool==="claude" ? "\n</pasted_context>" : ""}`;
+    return o.trim();
+  }
+  const ask = (s.style.includes("Ask clarifying questions before writing code")
+    ? "If something is unclear and would change the outcome, ask before acting."
+    : "If something is unclear, state your assumption and continue.")
+    + (s.style.includes("Propose a plan and wait for my approval") ? " Present your approach first and STOP for my approval before changing anything." : "");
+  const rules = s.style.length || s.extra ? bullets([...s.style, ...lines(s.extra)]) : "";
+  const verify = "Check your work against the success criteria in the project context, and finish with what you changed and how I verify it.";
+
+  if(tool==="claude"){
+    let o = "This is a follow-up in an ongoing project. Use the context below; do not restart or redo finished work.\n\n";
+    if(ctx.length) o += `<project_context>\n${ctx.map(x=>`${x.title}:\n${x.body}`).join("\n\n")}\n</project_context>\n\n`;
+    parts.forEach(x=>o += `<${x.key}>\n${x.body}\n</${x.key}>\n\n`);
+    o += `<instructions>\n${K.intro}\n${K.steps}\n${ask}\n${verify}\n</instructions>`;
+    return o;
+  }
+  if(tool==="cursor"){
+    let o = `# Follow-up: ${K.label}${s.name?` (${s.name})`:""}\n\n`;
+    if(ctx.length) o += `## Project Context\n${ctx.map(x=>`### ${x.title}\n${x.body}`).join("\n\n")}\n\n`;
+    parts.forEach(x=>o += `## ${x.title}\n${x.body}\n\n`);
+    o += `## How to proceed in Cursor\n- ${K.intro}\n- Re-read the files you will touch first (use @file / @folder); do not rely on memory of earlier turns.\n- Keep changes minimal and within the existing conventions. No new dependencies without asking.\n- ${K.steps}\n- ${ask}\n- ${verify}`;
+    if(rules) o += `\n\n## Working Rules\n${rules}`;
+    return o;
+  }
+  if(tool==="antigravity"){
+    let o = `# Follow-up Mission: ${K.label}${s.name?` (${s.name})`:""}\n\n`;
+    if(ctx.length) o += `## Project Context\n${ctx.map(x=>`### ${x.title}\n${x.body}`).join("\n\n")}\n\n`;
+    parts.forEach(x=>o += `## ${x.title}\n${x.body}\n\n`);
+    o += `## Execution Requirements\n1. ${K.intro}\n2. Update or extend the existing plan artifact before changing anything.\n3. ${K.steps}\n4. ${ask}\n5. Verify with evidence (run it, test it, or check it in the browser) and record the result.\n6. Finish with a walkthrough artifact: what changed, evidence, known gaps, next step.`;
+    if(rules) o += `\n\n## Working Rules\n${rules}`;
+    return o;
+  }
+  if(tool==="gemini"){
+    let o = `# Task: ${K.label}${s.name?` for ${s.name}`:""}\n${K.intro}\n\n`;
+    parts.forEach(x=>o += `## ${x.title}\n${x.body}\n\n`);
+    if(ctx.length) o += `# Project Context (for reference; do not restart finished work)\n${ctx.map(x=>`## ${x.title}\n${x.body}`).join("\n\n")}\n\n`;
+    o += `# How to respond\n- ${K.steps}\n- ${ask}\n- ${verify}`;
+    if(rules) o += `\n\n# Working Rules\n${rules}`;
+    o += `\n\n# Output format\n1. **Approach** (2-4 sentences)\n2. **Work** (the change, fix, or review itself)\n3. **Verify** (exact steps I run to confirm it)\n4. **Next** (one sentence)`;
+    return o;
+  }
+  if(tool==="grok"){
+    let o = `# System\nYou are a senior software engineer continuing an existing project. Be direct and concrete; no filler, no restating the brief. Do not restart or redo finished work. ${ask}`;
+    if(rules) o += `\n\n## Working Rules\n${rules}`;
+    o += `\n\n# User\n## ${K.label}\n${K.intro}\n\n`;
+    parts.forEach(x=>o += `## ${x.title}\n${x.body}\n\n`);
+    if(ctx.length) o += `## Project Context (reference only)\n${ctx.map(x=>`**${x.title}**\n${x.body}`).join("\n\n")}\n\n`;
+    o += `## Respond exactly in this order\n1. Approach (2-3 sentences)\n2. The work\n3. How I verify it\n4. Next step (one line)\n\n${K.steps} ${verify}`;
+    return o;
+  }
+  let o = `# Role\nYou are a senior software engineer continuing work on an existing project. Be precise and explicit about assumptions.\n\n`;
+  if(ctx.length) o += `# Project Context\n${ctx.map(x=>`## ${x.title}\n${x.body}`).join("\n\n")}\n\n`;
+  o += `# Follow-up: ${K.label}\n`;
+  parts.forEach(x=>o += `## ${x.title}\n${x.body}\n\n`);
+  o += `# Instructions\n- ${K.intro}\n- ${K.steps}\n- ${ask}\n- ${verify}`;
+  if(rules) o += `\n- Follow these working rules:\n${rules.split("\n").map(l=>"  "+l).join("\n")}`;
+  return o;
+}
+
+function build(s){
+  if(mode==="followup") return buildFollow(s);
+  const sec = sections(s);
+  const get = k => sec.find(x=>x.key===k);
+  const waitPlan = s.style.includes("Propose a plan and wait for my approval");
+  const typeInstr = (TYPES[s.type]||{}).instr || "";
+  const finishAsk = (typeInstr ? typeInstr + " " : "") + (s.style.includes("Ask clarifying questions before writing code")
+    ? "Before doing anything, list any questions or ambiguities that would change the outcome, and wait for my answers."
+    : "If anything is ambiguous, state your assumptions explicitly, then proceed.")
+    + (waitPlan ? " Present your plan (read-only investigation is fine) and STOP: make no changes and produce no deliverables until I approve the plan." : "");
+  const thenDo = waitPlan ? "After I approve the plan, produce" : "Then produce";
+
+  if(tool==="claude"){
+    const tag = {project:"project",problem:"problem_and_audience",goals:"goals",outcomes:"success_criteria",deliverables:"deliverables",tech:"technical_context",constraints:"constraints",outscope:"out_of_scope",phases:"phases",context:"existing_context",rules:"working_rules"};
+    let o = "You are an expert senior engineer and technical collaborator. Read the project brief below carefully, then follow the working rules.\n\n";
+    sec.forEach(x=>o += `<${tag[x.key]}>\n${x.body}\n</${tag[x.key]}>\n\n`);
+    o += `<instructions>\n${finishAsk}\n${thenDo} the deliverables listed above, checking your work against the success criteria. End by listing what you delivered, what remains, and how I verify it works.\n</instructions>`;
+    return o;
+  }
+  if(tool==="cursor"){
+    let o = `# Task: ${s.name||"Project"}\n\n`;
+    sec.forEach(x=>{ if(x.key!=="project") o += `## ${x.title}\n${x.body}\n\n`; else o += `${x.body}\n\n`; });
+    o += `## How to proceed in Cursor\n- Read the relevant existing files first; reference them with @file / @folder instead of guessing.\n- Match the project's existing conventions, naming, and dependencies. Do not add new dependencies without asking.\n- Make the smallest set of changes that satisfies the success criteria; don't touch unrelated files.\n- Show a short plan, then implement in small steps, running or describing how to run tests/linters after each.\n- ${finishAsk}\n- When done, summarize changed files and how to verify.`;
+    return o;
+  }
+  if(tool==="antigravity"){
+    let o = `# Mission: ${s.name||"Project"}\n\n`;
+    sec.forEach(x=>{ o += `## ${x.title}\n${x.body}\n\n`; });
+    o += `## Execution Requirements\n1. Start with an implementation plan artifact (steps, files affected, risks) before changing anything.\n2. ${finishAsk}\n3. Work in milestones; after each, verify (run code/tests/browser check as applicable) and record the result.\n4. Produce a final walkthrough artifact: what was built, evidence it meets each success criterion, known gaps, next steps.\n5. Stay within scope; surface anything outside it as a suggestion, not an action.`;
+    return o;
+  }
+  if(tool==="gemini"){
+    const want = get("deliverables") ? "Produce every listed deliverable" : "Do the work described";
+    let o = `# Task\nAct as a senior software engineer. ${want} for the project below, then verify it against the success criteria.\n\n# Project Brief\n`;
+    sec.forEach(x=>{ o += `## ${x.title}\n${x.body}\n\n`; });
+    o += `# How to respond\n- ${finishAsk}\n- Follow the Working Rules exactly.\n- Be concrete: real file paths, complete code, exact commands.\n\n# Output format\n1. **Plan** (numbered steps, files affected, risks)\n2. **Deliverables** (each in its own section, complete)\n3. **Verification** (checklist mapped to each success criterion)\n4. **Open questions / assumptions**`;
+    return o;
+  }
+  if(tool==="grok"){
+    const rulesSec = get("rules");
+    let o = `# System\nYou are a senior software engineer and technical lead. Be direct and concrete; skip preamble and do not restate the brief. Use complete code and exact commands, never placeholders. State assumptions explicitly.`;
+    if(rulesSec) o += `\n\n## Working Rules\n${rulesSec.body}`;
+    o += `\n\n# User\n`;
+    sec.forEach(x=>{ if(x.key!=="rules") o += `## ${x.title}\n${x.body}\n\n`; });
+    o += `## Instructions\n${finishAsk} ${thenDo} the deliverables, check them against the success criteria, and end with: what you delivered, what remains, how I verify it.\n\n## Respond exactly in this order\n1. Plan (numbered steps, files affected, risks)\n2. Deliverables (each complete, in its own section)\n3. Verification checklist mapped to each success criterion\n4. Open questions / assumptions`;
+    return o;
+  }
+  // openai
+  let o = `# Role\nYou are a senior software engineer and technical lead. Be precise, practical, and explicit about assumptions.\n\n# Project Brief\n`;
+  sec.forEach(x=>{ o += `## ${x.title}\n${x.body}\n\n`; });
+  o += `# Instructions\n- ${finishAsk}\n- Follow the Working Rules exactly.\n- Produce every listed deliverable; verify against the success criteria.\n- Output format: short plan first, then deliverables, then a verification checklist.`;
+  return o;
+}
+
+function scoreFollow(s){
+  const K = FU[s.fuKind] || FU.next;
+  if(s.fuKind==="quick") return {total: s.fuTask ? 100 : 0, missing: s.fuTask ? [] : ["Your message"]};
+  const checks = [
+    ["What you want done now",!!s.fuTask,40],
+    ...(K.last ? [["The output / error / evidence to work from",!!s.fuLast,25]] : [["Progress so far",!!s.fuDone,15]]),
+    ...(K.exp ? [["Expected outcome",!!s.fuExpected,15]] : []),
+    ["Project name and summary (load a project or fill Initial)",!!(s.name&&s.oneliner),10],
+    ["Success criteria in the project brief",lines(s.outcomes).length>=1,10]
+  ];
+  const max = checks.reduce((a,c)=>a+c[2],0);
+  const total = Math.round(checks.reduce((a,c)=>a+(c[1]?c[2]:0),0)*100/max);
+  return {total, missing:checks.filter(c=>!c[1]).map(c=>c[0])};
+}
+
+function score(s){
+  if(mode==="followup") return scoreFollow(s);
+  const research = /^Research/.test(s.type);
+  const skip = research ? ["Deliverables chosen","Tech stack","Environment"] : [];
+  const checks = [
+    ["Project name",!!s.name,5],["One-sentence summary",!!s.oneliner,10],["Problem",!!s.problem,10],["Users / audience",!!s.users,5],
+    ["At least 2 goals",lines(s.goals).length>=2,15],["Testable success criteria",lines(s.outcomes).length>=2,20],
+    ["Deliverables chosen",(s.deliv.length+lines(s.delivOther).length)>=2,10],["Tech stack",!!s.stack,7],["Environment",!!s.env,5],
+    ["Out-of-scope or constraints",!!(s.outscope||s.constraints),5],["Working rules",s.style.length>=1,8]
+  ].filter(c=>!skip.includes(c[0]));
+  const max = checks.reduce((a,c)=>a+c[2],0);
+  const total = Math.round(checks.reduce((a,c)=>a+(c[1]?c[2]:0),0)*100/max);
+  return {total, missing:checks.filter(c=>!c[1]).map(c=>c[0])};
+}
+
+function mkKey(id, obj, labelOf){
+  $(id).innerHTML = Object.keys(obj).map(k=>`<dt data-k="${k.replace(/"/g,'&quot;')}">${labelOf(k)}</dt><dd>${obj[k].gen}</dd>`).join("");
+}
+mkKey("fuKey", FU, k=>FU[k].label);
+mkKey("typeKey", TYPES, k=>k);
+
+let histSig = null;
+function renderHistory(){
+  const sig = JSON.stringify(history);
+  if(sig===histSig) return;
+  histSig = sig;
+  const box = $("hist"); box.textContent = "";
+  $("histCount").textContent = history.length ? `(${history.length})` : "";
+  if(!history.length){ const p=document.createElement("p"); p.className="meta"; p.textContent="Nothing yet. Build a prompt and click \"Add to history\"."; box.appendChild(p); return; }
+  history.forEach((h,i)=>{
+    const d=document.createElement("details"); d.className="hitem";
+    const sm=document.createElement("summary");
+    sm.textContent = `#${i+1} · ${h.kind||"Initial"} · ${(TOOLS[h.tool]||{label:h.tool||"?"}).label} · ${h.date?new Date(h.date).toLocaleString():""}`;
+    d.appendChild(sm);
+    const pre=document.createElement("pre"); pre.textContent=h.text; d.appendChild(pre);
+    const row=document.createElement("div"); row.className="row";
+    const cp=document.createElement("button"); cp.className="btn"; cp.textContent="Copy";
+    cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(h.text); }catch(e){ const r=document.createRange(); r.selectNodeContents(pre); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand("copy"); } cp.textContent="Copied!"; setTimeout(()=>cp.textContent="Copy",1500); };
+    const rm=document.createElement("button"); rm.className="btn"; rm.textContent="Remove";
+    rm.onclick=()=>{ history.splice(i,1); render(); };
+    row.append(cp,rm); d.appendChild(row); box.appendChild(d);
+  });
+}
+
+function applyMode(s){
+  const fu = mode==="followup";
+  $("initCards").hidden = fu; $("fuCards").hidden = !fu;
+  document.querySelectorAll("#modes .tool").forEach(b=>b.classList.toggle("on",b.dataset.m===mode));
+  $("modeNote").textContent = fu ? (s.fuKind==="quick" ? "Your message as typed, plus a one-line project header and any guardrails. No instructions boilerplate." : "A short prompt for the next turn. It carries a compact project brief so you do not resend everything.") : "The full project brief that starts the work.";
+  const K = FU[s.fuKind] || FU.next;
+  document.querySelectorAll("#fuKey dt").forEach(e=>e.classList.toggle("cur", e.dataset.k===s.fuKind));
+  document.querySelectorAll("#typeKey dt").forEach(e=>e.classList.toggle("cur", e.dataset.k===s.type));
+  $("fuTaskL").innerHTML = K.task;
+  [["fuLastW","fuLastL",K.last],["fuExpW","fuExpL",K.exp],["fuDoneW","fuDoneL",K.done]].forEach(([w,l,t])=>{ $(w).hidden=!t; if(t) $(l).innerHTML=t; });
+}
+
+function render(){
+  const s = state();
+  applyMode(s);
+  renderHistory();
+  document.querySelectorAll("#tools .tool").forEach(b=>b.classList.toggle("on",b.dataset.t===tool));
+  $("toolNote").textContent = TOOLS[tool].note;
+  const text = build(s);
+  $("out").textContent = text;
+  const sc = score(s);
+  $("barfill").style.width = sc.total+"%";
+  $("barfill").style.background = sc.total>=80?"var(--ok)":"var(--warn)";
+  $("score").textContent = `Completeness ${sc.total}%`;
+  $("tips").innerHTML = sc.missing.slice(0,5).map(m=>`<li>Add: ${m}</li>`).join("");
+  $("count").textContent = `${text.length.toLocaleString()} chars · ~${Math.round(text.length/4).toLocaleString()} tokens`;
+  try{ localStorage.setItem("ppb_draft",JSON.stringify(s)); }catch(e){}
+}
+
+document.addEventListener("input",render);
+document.addEventListener("change",render);
+$("tools").addEventListener("click",e=>{ const b=e.target.closest(".tool"); if(b && TOOLS[b.dataset.t]){tool=b.dataset.t;render();} });
+$("modes").addEventListener("click",e=>{ const b=e.target.closest(".tool"); if(b){mode=b.dataset.m;render();} });
+$("logBtn").onclick=()=>{
+  const s=state();
+  history.push({date:new Date().toISOString(), tool, kind: mode==="followup" ? (FU[s.fuKind]||FU.next).label : "Initial", text:$("out").textContent});
+  render();
+  $("logBtn").textContent="Added!"; setTimeout(()=>$("logBtn").textContent="Add to history",1500);
+};
+
+$("copyBtn").onclick = async()=>{
+  const t=$("out").textContent;
+  try{ await navigator.clipboard.writeText(t); }catch(e){ const r=document.createRange(); r.selectNodeContents($("out")); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand("copy"); }
+  $("copyBtn").textContent="Copied!"; setTimeout(()=>$("copyBtn").textContent="Copy prompt",1500);
+};
+function download(name,text,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+const slug = () => ((state().name||"prompt").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"prompt");
+$("dlBtn").onclick = ()=>download(`${slug()}-${mode==="followup"?"followup-":""}${tool}.md`,$("out").textContent,"text/markdown");
+
+// saved projects
+function getSaved(){ try{return JSON.parse(localStorage.getItem("ppb_saved")||"{}");}catch(e){return {};} }
+function refreshSaved(sel){
+  const d=getSaved(); const sel_=$("saved"); sel_.textContent=""; const o0=document.createElement("option"); o0.value=""; o0.textContent="Saved projects…"; sel_.appendChild(o0);
+  Object.keys(d).forEach(k=>{ const o=document.createElement("option"); o.textContent=k; o.value=k; if(k===sel) o.selected=true; sel_.appendChild(o); });
+}
+$("saveBtn").onclick=()=>{ const s=state(); const n=s.name||prompt("Name for this project?"); if(!n)return; const d=getSaved(); d[n]=s; localStorage.setItem("ppb_saved",JSON.stringify(d)); refreshSaved(n); };
+$("saved").onchange=()=>{ const d=getSaved(); if(d[$("saved").value]) setState(d[$("saved").value]); };
+$("delBtn").onclick=()=>{ const k=$("saved").value; if(!k||!confirm(`Delete "${k}"?`))return; const d=getSaved(); delete d[k]; localStorage.setItem("ppb_saved",JSON.stringify(d)); refreshSaved(); };
+$("newBtn").onclick=()=>{ if(confirm("Clear the form?")) setState({tool}); };
+$("expBtn").onclick=()=>download(`${slug()}.json`,JSON.stringify(state(),null,2),"application/json");
+$("impBtn").onclick=()=>$("impFile").click();
+$("impFile").onchange=e=>{ const f=e.target.files[0]; if(!f)return; f.text().then(t=>{ try{setState(JSON.parse(t));}catch(x){alert("Invalid JSON file");} }); };
+
+// ---- Chat interviewer (fills the form by conversation; needs the server) ----
+const COVER = {
+  initial:[["name","Name"],["oneliner","Summary"],["type","Type"],["problem","Problem"],["goals","Goals"],["outcomes","Success criteria"],["deliv","Deliverables"],["stack","Stack"],["env","Environment"],["constraints","Constraints"],["outscope","Out of scope"],["style","AI working rules"]],
+  followup:[["fuKind","Kind"],["fuTask","Request"],["fuExpected","Expected"],["fuDone","Done so far"],["fuGuard","Guardrails"]]
+};
+const OPENER = {initial:"What are we building? Describe it any way you like — one sentence or a brain dump. I'll pull out what I can and ask about the rest.",
+                followup:"What happened since the last prompt, and what do you want now?"};
+let chatBusy = false, chatAvailable = false;
+function renderCover(){
+  const s = state(); const cov = $("chatCover"); if(!cov) return; cov.textContent="";
+  COVER[mode].forEach(([k,label])=>{ const v=s[k]; const ok = Array.isArray(v) ? v.length>0 : !!(v&&String(v).trim()); const sp=document.createElement("span"); sp.className=ok?"ok":""; sp.textContent=(ok?"✓ ":"○ ")+label; cov.appendChild(sp); });
+}
+function renderChat(){
+  const log = $("chatLog"); if(!log) return; log.textContent = "";
+  const list = chat.length ? chat : [{role:"assistant",content:OPENER[mode]}];
+  list.forEach(m=>{ const d=document.createElement("div"); d.className="msg "+(m.role==="user"?"me":"ai"); d.textContent=m.content; log.appendChild(d); });
+  log.scrollTop = log.scrollHeight;
+  renderCover();
+}
+function chatApply(fields){
+  Object.keys(fields||{}).forEach(k=>{
+    if(k==="deliv"||k==="style"){ document.querySelectorAll(`input[data-g="${k}"]`).forEach(e=>{ e.checked = fields[k].includes(e.value); }); }
+    else if($(k)){ $(k).value = fields[k]; }
+  });
+}
+async function chatSend(text, finish){
+  if(chatBusy || !chatAvailable) return;
+  text = (text||"").trim(); if(!text) return;
+  chat.push({role:"user",content:text}); $("chatIn").value=""; renderChat();
+  chatBusy = true; $("chatSend").disabled = $("chatDone").disabled = true; $("chatStatus").textContent = "thinking…";
+  const s = state(); const fields = {}; TEXT_IDS.forEach(id=>fields[id]=s[id]); fields.deliv=s.deliv; fields.style=s.style;
+  try{
+    const r = await fetch(PB_API+"/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode, fields, messages:chat})});
+    const j = await r.json(); if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+    chatApply(j.fields); chat.push({role:"assistant",content:j.reply}); render(); renderChat();
+    $("chatStatus").textContent = Object.keys(j.fields||{}).length ? `updated: ${Object.keys(j.fields).map(k=>FIELD_NAMES[k]||k).join(", ")}` : "";
+    if(j.done || finish){ const d=document.createElement("div"); d.className="msg sys"; d.textContent="Prompt built — it's in the Generated prompt panel. Copy it, or keep chatting to refine."; $("chatLog").appendChild(d); $("chatLog").scrollTop=1e9; $("out").scrollIntoView({behavior:"smooth",block:"start"}); }
+  }catch(e){ chat.pop(); $("chatIn").value = text; renderChat(); $("chatStatus").textContent = "Error: " + e.message; }
+  chatBusy = false; $("chatSend").disabled = $("chatDone").disabled = false;
+}
+$("chatSend").onclick = ()=>chatSend($("chatIn").value);
+$("chatIn").addEventListener("keydown", e=>{ if(e.key==="Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); chatSend($("chatIn").value); } });
+$("chatDone").onclick = ()=>chatSend($("chatIn").value.trim() ? $("chatIn").value + "\n\nI'm done — build the prompt." : "I'm done — build the prompt.", true);
+$("chatReset").onclick = ()=>{ if(confirm("Clear this conversation? Form fields are kept.")){ chat=[]; render(); renderChat(); } };
+$("modes").addEventListener("click", ()=>renderChat());
+document.addEventListener("input", ()=>{ if(!chatBusy) renderCover(); });
+document.addEventListener("change", ()=>{ if(!chatBusy) renderCover(); });
+
+// ---- Tidy with AI (opt-in; needs the server, which proxies to the model) ----
+const TIDY_INITIAL = ["name","oneliner","problem","users","goals","outcomes","outscope","phases","stack","env","constraints","extra"];
+const TIDY_FOLLOW = ["fuTask","fuExpected","fuDone","fuGuard"];
+const FIELD_NAMES = {name:"Project name",oneliner:"Summary",problem:"Problem",users:"Users",goals:"Goals",outcomes:"Success criteria",outscope:"Out of scope",phases:"Phases",stack:"Stack",env:"Environment",constraints:"Constraints",extra:"Anything else",fuTask:"Request",fuExpected:"Expected outcome",fuDone:"Done so far",fuGuard:"Guardrails"};
+let tidyPending = {};
+async function tidyInit(){
+  if(location.protocol==="file:") return;
+  try{
+    const st = await (await fetch(PB_API+"/tidy/status")).json();
+    $("tidyBtn").hidden = false;
+    if(!st.ok){ $("tidyBtn").disabled = true; $("tidyNote").hidden=false; $("tidyNote").textContent = "AI unavailable: " + (st.error||"unknown") + " — the form still works."; $("formWrap").open = true; }
+    else { $("tidyBtn").title += ` — model: ${st.model}`; chatAvailable = true; $("chatCard").hidden = false; $("chatHint").textContent = `model: ${st.model} · I'll ask what I need, one thing at a time`; renderChat(); }
+  }catch(e){ $("formWrap").open = true; /* no server: form only */ }
+}
+$("tidyBtn").onclick = async()=>{
+  const s = state(); const ids = mode==="followup" ? TIDY_FOLLOW : TIDY_INITIAL;
+  const fields = {}; ids.forEach(id=>fields[id]=s[id]);
+  $("tidyBtn").disabled = true; $("tidyBtn").textContent = "Tidying…"; $("tidyNote").hidden=true;
+  try{
+    const r = await fetch(PB_API+"/tidy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,fields})});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+    tidyPending = j.changes||{};
+    const keys = Object.keys(tidyPending);
+    $("tidyMeta").textContent = `${j.model} · ${(j.ms/1000).toFixed(1)} s · ${keys.length} change${keys.length===1?"":"s"}${j.truncated?" · reply was cut short, check long fields":""}`;
+    const list = $("tidyList"); list.textContent = "";
+    if(!keys.length){ const p=document.createElement("p"); p.className="meta"; p.textContent="No changes suggested."; list.appendChild(p); }
+    keys.forEach(k=>{
+      const box=document.createElement("div"); box.className="tf"; box.dataset.k=k;
+      const b=document.createElement("b"); b.textContent=FIELD_NAMES[k]||k; box.appendChild(b);
+      const o=document.createElement("div"); o.className="old"; o.textContent=s[k]||"(empty)"; box.appendChild(o);
+      const n=document.createElement("div"); n.className="new"; n.textContent=tidyPending[k]||"(cleared)"; box.appendChild(n);
+      const row=document.createElement("div"); row.className="row";
+      const ap=document.createElement("button"); ap.className="btn pri"; ap.textContent="Apply"; ap.onclick=()=>{ tidyApply(k); box.classList.add("done"); };
+      const sk=document.createElement("button"); sk.className="btn"; sk.textContent="Skip"; sk.onclick=()=>{ delete tidyPending[k]; box.classList.add("skip"); };
+      row.append(ap,sk); box.appendChild(row); list.appendChild(box);
+    });
+    $("tidyCard").hidden = false; $("tidyCard").scrollIntoView({behavior:"smooth",block:"nearest"});
+  }catch(e){ $("tidyNote").hidden=false; $("tidyNote").textContent = "Tidy failed: " + e.message; }
+  $("tidyBtn").disabled = false; $("tidyBtn").textContent = "✨ Tidy with AI";
+};
+function tidyApply(k){ if(!(k in tidyPending)) return; $(k).value = tidyPending[k]; delete tidyPending[k]; render(); }
+$("tidyAll").onclick = ()=>{ Object.keys(tidyPending).forEach(k=>{ tidyApply(k); const b=document.querySelector(`.tf[data-k="${k}"]`); if(b) b.classList.add("done"); }); };
+$("tidyNone").onclick = ()=>{ tidyPending = {}; $("tidyCard").hidden = true; };
+tidyInit();
+
+refreshSaved();
+try{ const d=JSON.parse(localStorage.getItem("ppb_draft")||"null"); if(d) setState(d); else render(); }catch(e){ render(); }
+</script>
+</body>
+</html>
